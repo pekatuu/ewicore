@@ -150,9 +150,9 @@ powershell -ExecutionPolicy Bypass -File vst/build_vst.ps1
 # ewi-axis-va.vst3フォルダごと Common\VST3 (例: %LOCALAPPDATA%\Programs\Common\VST3\) にコピー
 ```
 
-仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/PitchBend/ProgramChange)、IMidiMapping対応、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
+仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/PitchBend/ProgramChange)+NoteExpressionチューニング対応、IMidiMapping対応、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
 
-検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。
+検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。`vst/test/bend_test.cpp` (要ビルド) でBEND繰り返し追従をプロセッサ層で検証 (legacy CC129・note-expression両経路)。
 
 ## API (抜粋)
 

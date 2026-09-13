@@ -4,6 +4,7 @@
 #include "EwiVstParams.h"
 #include "public.sdk/source/vst/vsteventshelper.h"
 #include "pluginterfaces/vst/ivstevents.h"
+#include "pluginterfaces/vst/ivstnoteexpression.h"
 #include "pluginterfaces/vst/ivstmidicontrollers.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/base/ibstream.h"
@@ -114,6 +115,22 @@ void EwiVst::EwiVstProcessor::applyEvent (const Event& ev)
                   (uint8_t)(ev.noteOn.velocity * 127.f + 0.5f));
       break;
     case Event::kNoteOffEvent: Ewi_NoteOff (&synth, (uint8_t)ev.noteOff.pitch); break;
+    case Event::kNoteExpressionValueEvent:
+    {
+      // Some hosts deliver pitch bend as tuning note expression instead of
+      // legacy MIDI CC129. Tuning is +/-120 semitones around 0.5; our bend
+      // range is +/-2 semitones, so clamp into it.
+      if (ev.noteExpressionValue.typeId == NoteExpressionTypeIDs::kTuningTypeID)
+      {
+        double semi = (ev.noteExpressionValue.value - 0.5) * 240.0;
+        if (semi < -2.0)
+          semi = -2.0;
+        if (semi > 2.0)
+          semi = 2.0;
+        Ewi_PitchBend (&synth, 8192 + (int)(semi / 2.0 * 8192.0));
+      }
+      break;
+    }
     case Event::kLegacyMIDICCOutEvent:
     {
       const uint8 cc = ev.midiCCOut.controlNumber;

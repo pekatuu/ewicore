@@ -37,3 +37,20 @@ target_include_directories(ewi-axis-va PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/source
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vst3sdk
 )
+
+# Processor-level regression test (console): repeated bend tracking
+add_executable(ewi-vst-bend-test
+    test/bend_test.cpp
+    source/EwiVstProcessor.cpp
+    source/EwiVstController.cpp
+    ../core/ewi_synth.c
+)
+set_source_files_properties(../core/ewi_synth.c PROPERTIES LANGUAGE CXX)
+target_compile_definitions(ewi-vst-bend-test PRIVATE EWI_QUALITY=1)
+target_compile_options(ewi-vst-bend-test PRIVATE /utf-8)
+target_include_directories(ewi-vst-bend-test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core
+    ${CMAKE_CURRENT_SOURCE_DIR}/source
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vst3sdk
+)
+target_link_libraries(ewi-vst-bend-test PRIVATE base pluginterfaces sdk)
