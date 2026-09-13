@@ -1,0 +1,12 @@
+# build outputs / local artifacts
+pico/build/
+*.o
+*.obj
+*.elf
+*.uf2
+*.log
+*.err
+.DS_Store
+Thumbs.db
+*~
+*.bak

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EWI5000 VA Core — WASM動作確認</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <h1>EWI5000 VA Core <small>Pico2/PC共用 · WASM確認</small></h1>
+  <div class="row">
+    <button id="btnAudio">Audio開始</button>
+    <button id="btnSelf">テスト音</button>
+    <button id="btnPanic">All Notes Off</button>
+    <label>Preset
+      <select id="selPreset">
+        <option value="0">0 Axis</option>
+        <option value="1">1 Flute</option>
+        <option value="2">2 Brass</option>
+        <option value="3">3 SyncLd</option>
+      </select>
+    </label>
+    <label>MIDI In
+      <select id="selMidi"><option value="">(未接続)</option></select>
+    </label>
+    <button id="btnMidi">MIDI有効化</button>
+    <label>音質
+      <select id="selQuality">
+        <option value="pico">Pico2 (実機相当)</option>
+        <option value="hq">PC-HQ (高品位)</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>ブレス / ノート</h2>
+    <div class="row">
+      <label>Breath CC2 <input id="rngBreath" type="range" min="0" max="127" value="0" /> <span id="valBreath">0</span></label>
+      <label>Vibrato CC1 <input id="rngVib" type="range" min="0" max="127" value="0" /> <span id="valVib">0</span></label>
+      <label>Oct <input id="rngOct" type="number" min="2" max="7" value="4" /></label>
+    </div>
+    <div id="keys"></div>
+    <p class="hint">PCキーボード: A W S E D F T G Y H U J = 白鍵/黒鍵 / Z,Xで息を吸う代わりにブレスEnvelopeテスト / Spaceでブレス110</p>
+    <canvas id="meter" width="640" height="90"></canvas>
+    <div id="log"></div>
+  </section>
+
+  <section class="panel">
+    <h2>パラメータ (プリセット上書き)</h2>
+    <div class="grid">
+      <label>Cutoff base Hz <input id="pCut" type="range" min="80" max="8000" value="750" /><span id="vCut">750</span></label>
+      <label>Breath→Cut Hz <input id="pBCut" type="range" min="0" max="12000" value="6200" /><span id="vBCut">6200</span></label>
+      <label>Resonance <input id="pRes" type="range" min="0" max="95" value="38" /><span id="vRes">0.38</span></label>
+      <label>Formant mix <input id="pForm" type="range" min="0" max="100" value="35" /><span id="vForm">0.35</span></label>
+      <label>Glide s <input id="pGlide" type="range" min="0" max="200" value="12" /><span id="vGlide">0.012</span></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>空間系 (Delay + Reverb、Pico/PC共通コア)</h2>
+    <div class="grid">
+      <label>Delay mix <input id="pDlyMix" type="range" min="0" max="60" value="12" /><span id="vDlyMix">0.12</span></label>
+      <label>Delay time ms <input id="pDlyTime" type="range" min="50" max="500" value="270" /><span id="vDlyTime">270</span></label>
+      <label>Delay FB <input id="pDlyFb" type="range" min="0" max="70" value="32" /><span id="vDlyFb">0.32</span></label>
+      <label>Reverb mix <input id="pRevMix" type="range" min="0" max="60" value="16" /><span id="vRevMix">0.16</span></label>
+      <label>Reverb size <input id="pRevSize" type="range" min="0" max="100" value="55" /><span id="vRevSize">0.55</span></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>シーケンサ (確認用)</h2>
+    <div class="row">
+      <button id="btnSeqDemo">デモフレーズをセット</button>
+      <button id="btnSeqPlay">シーケンス再生</button>
+      <button id="btnSeqStop">停止</button>
+      <label>Tempo <input id="rngTempo" type="range" min="0.5" max="1.5" step="0.01" value="1" /> <span id="valTempo">1.00x</span></label>
+      <label><input id="chkLoop" type="checkbox" /> loop</label>
+    </div>
+    <div class="row">
+      <label>SMF読込(.mid) <input id="fileMidi" type="file" accept=".mid,.midi,audio/midi" /></label>
+      <span id="seqPos">stop</span>
+    </div>
+    <p class="hint">内蔵デモはオリジナルの表現付きフレーズ (Aマイナー基調8小節、しゃくり/フォール/ポルタ/ブレスswell/区間別フィルタ入り、再生時Preset 0 Axisに切替)。市販曲のデータは同梱していません。お手持ちのSMFはブラウザ内でのみ処理され、外部送信されません。<br />SMF内のNote/CC1/CC2/PitchBend/Program/先頭Tempoに対応。ch指定は全chをマージして再生します。</p>
+    <div id="seqMsg">seq ready</div>
+  </section>
+
+  <section class="panel">
+    <h2>MIDIモニタ</h2>
+    <pre id="midiLog">MIDI待ち… EWI5000をUSBで接続 →「MIDI有効化」→ セレクトで入力選択。ch1受信 / CC2=Breath</pre>
+  </section>
+</main>
+
+<script src="ewi_synth.js"></script>
+<script src="ewi_synth_hq.js"></script>
+<script src="app.js"></script>
+<script src="seq.js"></script>
+</body>
+</html>

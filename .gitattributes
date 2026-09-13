@@ -1,0 +1,5 @@
+# Keep WASM binaries untouched by line-ending conversion.
+*.wasm binary
+# PowerShell scripts stay UTF-8 (build_wasm.ps1 has BOM; required for PS 5.1).
+*.ps1 text eol=crlf
+* text=auto
