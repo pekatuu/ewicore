@@ -1,5 +1,8 @@
 # build outputs / local artifacts
 pico/build/
+vst/build/
+vst/third_party/
+.vscode/
 *.o
 *.obj
 *.elf

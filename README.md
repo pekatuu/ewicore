@@ -130,6 +130,30 @@ Ewi_Midi(&s, 0x90, 69, 100); Ewi_Midi(&s, 0xB0, 2, 100);
 Ewi_Render(&s, bufL, bufR, 512);
 ```
 
+### 4) VST3プラグイン (PC用、EWI Axis VA)
+
+DAWで使うVST3音源。Pico2と同一のDSPコアを `EWI_QUALITY=1` (PC高品位) でビルド。
+
+| 方式 | メリット | デメリット | 備考 |
+|---|---|---|---|
+| Steinberg VST3 SDK直結 (採用) | 公式標準・全DAW対応、依存追加なし・軽量、GPLv3/商用選択可 | 自前GUIなし(汎用エディタ)、VST3のみ | 本リポジトリの方式 |
+| JUCE | GUIが豪華、VST3/AU/AAX一括、情報が多い | 巨大依存、商用は有料、学習コスト大 | 将来GUI付き化するなら候補 |
+| iPlug2 | 軽量・MIT系、VST3/AU/CLAP | コミュニティ小、習得コスト | 中間案 |
+| CLAP単体 | 新標準・開放的 | 対応DAWが少ない | 現時点では非推奨 |
+
+前提: CMake 4.x + VS2017 (MSVC 14.14) + git。SDKは `vst/fetch_sdk.ps1` がpinned tag (v3.7.9_build_61) を取得する (`vst/third_party/` はgit管理外)。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File vst/fetch_sdk.ps1  # 初回のみ
+powershell -ExecutionPolicy Bypass -File vst/build_vst.ps1
+# -> vst/build/VST3/Release/ewi-axis-va.vst3
+# ewi-axis-va.vst3フォルダごと Common\VST3 (例: %LOCALAPPDATA%\Programs\Common\VST3\) にコピー
+```
+
+仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/PitchBend/ProgramChange)、IMidiMapping対応、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
+
+検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。
+
 ## API (抜粋)
 
 ```c
