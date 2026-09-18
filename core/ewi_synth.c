@@ -174,11 +174,12 @@ void Ewi_NoteOff(EwiSynth* s, uint8_t note) {
 void Ewi_CC(EwiSynth* s, uint8_t cc, uint8_t val) {
   float v = clampf(val / 127.f, 0.f, 1.f);
   switch (cc) {
-    case 2:  s->breath_raw = v; break;              // Breath (EWI5000)
+    case 2:  s->breath_raw = v; break;              // Breath (EWI5000標準)
+    case 102: s->breath_raw = v; break;             // Breath代替 (EWI設定でCC102を使う場合)
     case 1:  s->cc1 = v; break;                     // Mod / Vibrato depth
     case 7:  s->volume = v; break;
     case 11: s->expression = v; break;
-    case 5:  s->porta_time = v * 0.4f; break;       // Porta time
+    case 5:  s->porta_time = v * 0.4f; break;       // Porta/Glide time (CC65なしでも有効)
     case 65: s->porta_on = (val >= 64); break;      // Porta on/off
     case 120: case 123: // AllSoundOff / AllNotesOff
       s->note = -1; s->breath_raw = 0; break;
@@ -250,7 +251,8 @@ static float rev_ap_tick(float in, float* buf, int len, int* idx) {
 void Ewi_Render(EwiSynth* s, float* outL, float* outR, int frames) {  const float sr = s->sr;
   const float dt_inv = 1.f / sr;
   float vib_target = s->cc1 * s->pr.vibrato_max; // semitone
-  float glide_t = s->porta_on ? (s->porta_time > 0.001f ? s->porta_time : s->pr.glide_s) : s->pr.glide_s;
+  // CC5が来ていればプリセットより優先 (EWIグライド操作用。CC5=0でプリセットに戻る)
+  float glide_t = s->porta_time > 0.001f ? s->porta_time : s->pr.glide_s;
   // glide係数 (指数平滑)。0なら即時。
   float gfreq = glide_t <= 0.0005f ? 1.f : 1.f - expf(-2.2f * dt_inv * 1000.f / (glide_t * 1000.f + 2.f));
   if (glide_t <= 0.0005f) gfreq = 1.f;

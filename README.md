@@ -52,11 +52,12 @@ Webアプリのヘッダ「音質」セレクトで Pico2/PC-HQ を切替可能 
 |---|---|---|
 | Note On/Off | `90 nn vv` / `80 nn 40` | モノレガート。`vv=0`はNoteOff扱い。velは参照のみ(強弱はブレス) |
 | Breath CC2 | `B0 02 vv` | **主包絡**。0..127→0..1。thresh/max+指数カーブ整形→VCA+VCF |
+| Breath CC102 | `B0 66 vv` | CC2と等価の代替ブレス (EWI側でCC102を使う場合) |
 | Modulation CC1 | `B0 01 vv` | ビブラート深さ。0で無効、127でpresetのmax semitone |
 | Volume CC7 | `B0 07 vv` | マスター(初期127) |
 | Expression CC11 | `B0 0B vv` | 表情付け(初期127)。VCAに `0.3+0.7*expr` で乗算 |
-| Portamento Time CC5 | `B0 05 vv` | `vv/127*0.4s`。CC65=ON時のみ有効 |
-| Portamento On/Off CC65 | `B0 41 vv` | >=64でON |
+| Glide CC5 | `B0 05 vv` | グライドタイム `vv/127*0.4s`。CC65なしでも有効。0でプリセット値に戻る |
+| Portamento On/Off CC65 | `B0 41 vv` | >=64でON (レガート挙動用。CC5とは独立) |
 | PitchBend | `E0 ll hh` (14bit) | `±bend_range` (preset既定±2st)。EWI5000のバイト/サム操作用 |
 | Program Change | `C0 pp` | `pp % 4` でプリセット切替 |
 | All Sound Off / All Notes Off | `B0 78 00` / `B0 7B 00` | 発音停止+ブレス0 |
@@ -150,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File vst/build_vst.ps1
 # ewi-axis-va.vst3フォルダごと Common\VST3 (例: %LOCALAPPDATA%\Programs\Common\VST3\) にコピー
 ```
 
-仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/PitchBend/ProgramChange)+NoteExpressionチューニング対応、IMidiMapping対応、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
+仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/CC102/PitchBend/ProgramChange)+NoteExpressionチューニング対応、IMidiMapping対応 (CC1/2/5/7/11/102)、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
 
 検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。`vst/test/bend_test.cpp` (要ビルド) でBEND繰り返し追従をプロセッサ層で検証 (legacy CC129・note-expression両経路)。
 

@@ -83,8 +83,10 @@ tresult PLUGIN_API EwiVst::EwiVstController::getMidiControllerAssignment (
   {
     case 1: id = EwiVst::kVibrato; return kResultTrue;
     case 2: id = EwiVst::kBreath; return kResultTrue;
+    case 5: id = EwiVst::kGlide; return kResultTrue;
     case 7: id = EwiVst::kVolume; return kResultTrue;
     case 11: id = EwiVst::kExpression; return kResultTrue;
+    case 102: id = EwiVst::kBreath; return kResultTrue;
     default: return kResultFalse;
   }
 }

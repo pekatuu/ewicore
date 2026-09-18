@@ -214,7 +214,7 @@ int main ()
       lp[i] = s;
     }
     size_t skip = n * 4 / 10;
-    int kMin = SR / 560, kMax = SR / 350;
+    int kMin = SR / 650, kMax = SR / 300; // 300..650Hz (bend min 392〜74番587Hz対応)
     double best = 0.0;
     int bestK = 0;
     for (int k = kMin; k <= kMax; k++)
@@ -239,6 +239,12 @@ int main ()
     params.queues.push_back (q);
   };
   auto evt = [&](const Event& e) { evs.evs.push_back (e); };
+  auto rmsOf = [&]() {
+    double s = 0.0;
+    for (size_t i = 0; i < acc.size (); i++)
+      s += (double)acc[i] * (double)acc[i];
+    return sqrt (s / (double)(acc.size () ? acc.size () : 1));
+  };
   Event e {};
 
   // clean measurement voice: cutoff open, FX off, resonance 0
@@ -255,6 +261,45 @@ int main ()
   {
     double f = measure ();
     check (f > 440 * 0.97 && f < 440 * 1.03, "base A4", f);
+  }
+  // CC102 breath (CC2=0 first so only CC102 opens the VCA)
+  evCC (e, 2, 0);
+  evt (e);
+  evCC (e, 102, 110);
+  evt (e);
+  runBlocks (20);
+  {
+    double r = rmsOf ();
+    bool ok = r > 0.01;
+    printf ("%s CC102 breath opens VCA: rms %.4f\n", ok ? "PASS" : "FAIL", r);
+    if (!ok)
+      failures++;
+    double f = measure ();
+    check (f > 440 * 0.97 && f < 440 * 1.03, "CC102 pitch steady", f);
+  }
+  // CC5 glide: slow slide 69->74, then snap back with CC5=0
+  evCC (e, 5, 127);
+  evt (e);
+  evNoteOn (e, 74, 0.9f);
+  evt (e);
+  runBlocks (5); // ~52 ms: must still be near 69 (glide lagging)
+  {
+    double f = measure ();
+    check (f < 500.0, "CC5 glide lagging", f);
+  }
+  runBlocks (120); // 0.4s時定数に十分な整定
+  {
+    double f = measure ();
+    check (f > 587 * 0.97 && f < 587 * 1.03, "CC5 glide arrived", f);
+  }
+  evCC (e, 5, 0);
+  evt (e);
+  evNoteOn (e, 69, 0.9f);
+  evt (e);
+  runBlocks (5); // preset glide 12 ms: snaps back quickly
+  {
+    double f = measure ();
+    check (f > 440 * 0.97 && f < 440 * 1.03, "CC5=0 snap back", f);
   }
   // legacy bend max #1
   evBend (e, 16383);

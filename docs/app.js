@@ -215,7 +215,7 @@ function onMidi(ev) {
   Mod._ewi_midi(st, d1, d2 ?? 0);
   if (type === 0x90) { curNote = d2 === 0 ? -1 : d1; if (d2 === 0 && curNote < 0) curNote = -1; }
   else if (type === 0x80) curNote = -1;
-  else if (type === 0xb0 && d1 === 2) { breath = d2; $("rngBreath").value = d2; $("valBreath").textContent = d2; }
+  else if (type === 0xb0 && (d1 === 2 || d1 === 102)) { breath = d2; $("rngBreath").value = d2; $("valBreath").textContent = d2; }
   else if (type === 0xc0) { $("selPreset").value = String(d2 % 4); }
 }
 
