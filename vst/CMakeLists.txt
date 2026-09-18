@@ -54,3 +54,20 @@ target_include_directories(ewi-vst-bend-test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vst3sdk
 )
 target_link_libraries(ewi-vst-bend-test PRIVATE base pluginterfaces sdk)
+
+# Strict-host simulation: CC/Pressure/Bend/PC only as params via IMidiMapping
+add_executable(ewi-vst-strict-test
+    test/strict_test.cpp
+    source/EwiVstProcessor.cpp
+    source/EwiVstController.cpp
+    ../core/ewi_synth.c
+)
+set_source_files_properties(../core/ewi_synth.c PROPERTIES LANGUAGE CXX)
+target_compile_definitions(ewi-vst-strict-test PRIVATE EWI_QUALITY=1)
+target_compile_options(ewi-vst-strict-test PRIVATE /utf-8)
+target_include_directories(ewi-vst-strict-test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core
+    ${CMAKE_CURRENT_SOURCE_DIR}/source
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/vst3sdk
+)
+target_link_libraries(ewi-vst-strict-test PRIVATE base pluginterfaces sdk)

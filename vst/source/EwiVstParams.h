@@ -25,15 +25,17 @@ enum : ParamID {
   kDlyFb,       // 0..0.7
   kRevMix,      // 0..0.6
   kRevSize,     // 0..1
+  kBend,        // 0..1 (PitchBend, center 0.5)
   kNumParamsSentinel
 };
 constexpr int kNumParams = 17;
 
 // State stream order (processor <-> controller must match)
+// NOTE: kBend appended last so v1 states (16 entries) stay prefix-compatible.
 static const ParamID kStateOrder[] = {
   kBypass, kPreset, kBreath, kVibrato, kVolume, kExpression, kCutoff,
   kBreathDepth, kResonance, kGlide, kFormant, kDlyMix, kDlyTime, kDlyFb,
-  kRevMix, kRevSize,
+  kRevMix, kRevSize, kBend,
 };
 constexpr int kStateCount = sizeof (kStateOrder) / sizeof (kStateOrder[0]);
 
@@ -74,6 +76,7 @@ inline double defaultNorm (ParamID id)
     case kDlyFb: return 0.32 / 0.7;
     case kRevMix: return 0.16 / 0.6;
     case kRevSize: return 0.55;
+    case kBend: return 0.5;
     default: return 0.0;
   }
 }

@@ -29,8 +29,8 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::initialize (FUnknown* context)
   if (result != kResultOk)
     return result;
   addAudioOutput (STR16 ("Stereo Out"), SpeakerArr::kStereo);
-  addEventInput (STR16 ("Event In"), 1);
-  for (int i = 0; i < EwiVst::kNumParams; i++)
+  addEventInput (STR16 ("Event In"), 16);
+  for (int i = 0; i < EwiVst::kStateCount; i++)
     mirror[i] = EwiVst::defaultNorm (EwiVst::kStateOrder[i]);
   return kResultOk;
 }
@@ -50,6 +50,10 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::setBusArrangements (
 tresult PLUGIN_API EwiVst::EwiVstProcessor::setupProcessing (ProcessSetup& setup)
 {
   Ewi_Init (&synth, (float)setup.sampleRate);
+  // setupProcessing may run after setState/param edits (e.g. sample-rate change):
+  // re-apply last known params so saved Breath/Volume/Bend/etc survive re-init.
+  for (int i = 0; i < EwiVst::kStateCount; i++)
+    applyParam (EwiVst::kStateOrder[i], mirror[i]);
   return AudioEffect::setupProcessing (setup);
 }
 
@@ -100,6 +104,9 @@ void EwiVst::EwiVstProcessor::applyParam (ParamID id, ParamValue norm)
     case kDlyFb: Ewi_SetDelayFb (&synth, (float)(norm * 0.7)); break;
     case kRevMix: Ewi_SetRevMix (&synth, (float)(norm * 0.6)); break;
     case kRevSize: Ewi_SetRevSize (&synth, (float)norm); break;
+    case kBend:
+      Ewi_PitchBend (&synth, (int)(norm * 16383.0 + 0.5));
+      break;
     case kBypass: bypass = (norm > 0.5); break;
     default: break;
   }
@@ -288,19 +295,22 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::setState (IBStream* state)
     return kResultFalse;
   IBStreamer s (state, kLittleEndian);
   int32 version = 0;
-  if (!s.readInt32 (version) || version != 1)
+  if (!s.readInt32 (version) || (version != 1 && version != 2))
     return kResultFalse;
   int32 preset = 0;
   if (!s.readInt32 (preset))
     return kResultFalse;
   Ewi_SetPreset (&synth, (uint8_t)preset);
-  for (int i = 0; i < EwiVst::kStateCount; i++)
+  const int n = (version == 1) ? EwiVst::kStateCount - 1 : EwiVst::kStateCount;
+  for (int i = 0; i < n; i++)
   {
     double v = 0.0;
     if (!s.readDouble (v))
       return kResultFalse;
     applyParam (EwiVst::kStateOrder[i], v);
   }
+  if (version == 1)
+    applyParam (EwiVst::kBend, 0.5);
   return kResultOk;
 }
 
@@ -310,7 +320,7 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::getState (IBStream* state)
   if (!state)
     return kResultFalse;
   IBStreamer s (state, kLittleEndian);
-  s.writeInt32 (1);
+  s.writeInt32 (2);
   s.writeInt32 ((int32)synth.preset_no);
   for (int i = 0; i < EwiVst::kStateCount; i++)
   {
