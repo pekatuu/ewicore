@@ -136,7 +136,8 @@ void EwiVst::EwiVstProcessor::applyEvent (const Event& ev)
       const uint8 cc = ev.midiCCOut.controlNumber;
       const uint8 v = (uint8_t)(ev.midiCCOut.value & 0x7F);
       if (cc == 1 || cc == 2 || cc == 5 || cc == 7 || cc == 11 || cc == 65 || cc == 102 ||
-          cc == 120 || cc == 123)
+          cc == 120 || cc == 123 ||
+          cc == ControllerNumbers::kAfterTouch) // Channel Pressure → ブレス
         Ewi_CC (&synth, cc, v);
       else if (cc == ControllerNumbers::kPitchBend)
         Ewi_PitchBend (&synth, (int)Helpers::getPitchBendValue (ev.midiCCOut));

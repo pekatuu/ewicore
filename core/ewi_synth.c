@@ -181,6 +181,7 @@ void Ewi_CC(EwiSynth* s, uint8_t cc, uint8_t val) {
     case 11: s->expression = v; break;
     case 5:  s->porta_time = v * 0.4f; break;       // Porta/Glide time (CC65なしでも有効)
     case 65: s->porta_on = (val >= 64); break;      // Porta on/off
+    case 128: s->breath_raw = v; break;             // Channel Pressureをブレス扱い
     case 120: case 123: // AllSoundOff / AllNotesOff
       s->note = -1; s->breath_raw = 0; break;
     default: break;
@@ -200,6 +201,7 @@ void Ewi_Midi(EwiSynth* s, uint8_t status, uint8_t d1, uint8_t d2) {
     case 0x90: if (d2 == 0) Ewi_NoteOff(s, d1); else Ewi_NoteOn(s, d1, d2); break;
     case 0x80: Ewi_NoteOff(s, d1); break;
     case 0xB0: Ewi_CC(s, d1, d2); break;
+    case 0xD0: Ewi_CC(s, 128, d1); break; // Channel Pressure → ブレス
     case 0xE0: Ewi_PitchBend(s, (int)d2 * 128 + (int)d1); break;
     case 0xC0: Ewi_SetPreset(s, d1 % EWI_NUM_PRESETS); break;
     default: break;

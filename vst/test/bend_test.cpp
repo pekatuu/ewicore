@@ -277,6 +277,23 @@ int main ()
     double f = measure ();
     check (f > 440 * 0.97 && f < 440 * 1.03, "CC102 pitch steady", f);
   }
+  // Aftertouch breath (CC2/CC102を0に戻してからAftertouchだけで開くこと)
+  evCC (e, 2, 0);
+  evt (e);
+  evCC (e, 102, 0);
+  evt (e);
+  evCC (e, 128, 110);
+  evt (e);
+  runBlocks (20);
+  {
+    double r = rmsOf ();
+    bool ok = r > 0.01;
+    printf ("%s Aftertouch breath opens VCA: rms %.4f\n", ok ? "PASS" : "FAIL", r);
+    if (!ok)
+      failures++;
+    double f = measure ();
+    check (f > 440 * 0.97 && f < 440 * 1.03, "Aftertouch pitch steady", f);
+  }
   // CC5 glide: slow slide 69->74, then snap back with CC5=0
   evCC (e, 5, 127);
   evt (e);

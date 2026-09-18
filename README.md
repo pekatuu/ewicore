@@ -61,6 +61,7 @@ Webアプリのヘッダ「音質」セレクトで Pico2/PC-HQ を切替可能 
 | PitchBend | `E0 ll hh` (14bit) | `±bend_range` (preset既定±2st)。EWI5000のバイト/サム操作用 |
 | Program Change | `C0 pp` | `pp % 4` でプリセット切替 |
 | All Sound Off / All Notes Off | `B0 78 00` / `B0 7B 00` | 発音停止+ブレス0 |
+| Channel Pressure | `Dn vv` | ブレスと等価 (Aftertouchで吹く機種用) |
 
 EWI5000側の推奨設定:
 
