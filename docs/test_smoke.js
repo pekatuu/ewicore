@@ -28,12 +28,14 @@ class FakeAC {
   createBufferSource() { return { connect() {}, start() {} }; }
 }
 
-const modCalls = { render: 0, noteOn: [] };
+const modCalls = { render: 0, noteOn: [], midi: [], cc: [] };
 const modStub = {
   _ewi_init() {}, _ewi_program() {}, _ewi_setCutoff() {}, _ewi_setBreathDepth() {},
   _ewi_setFilterGamma() {},
   _ewi_setReso() {}, _ewi_setFormant() {}, _ewi_setGlide() {},
-  _ewi_cc() {}, _ewi_noteOff() {},
+  _ewi_cc: (c, v) => modCalls.cc.push([c, v]),
+  _ewi_noteOff() {},
+  _ewi_midi: (st, d1, d2) => modCalls.midi.push([st, d1, d2]),
   _ewi_noteOn: (n) => modCalls.noteOn.push(n),
   _ewi_setDlyMix() {}, _ewi_setDlyTime() {}, _ewi_setDlyFb() {},
   _ewi_setRevMix() {}, _ewi_setRevSize() {},
@@ -91,6 +93,41 @@ vm.createContext(sandbox);
   assert(modCalls.render >= 1, `wasm renderが呼ばれない (${modCalls.render})`);
   const nextTime = vm.runInContext('nextTime', sandbox);
   assert(nextTime > 0, 'nextTimeが進まない');
+  // 外部MIDI回帰: ch2機器のNote/CCがch1正規化でコアに届くこと + ブレス救済
+  const lastMidi = () => modCalls.midi[modCalls.midi.length - 1];
+  const lastCc = () => modCalls.cc[modCalls.cc.length - 1];
+  vm.runInContext('breath = 0; curNote = -1;', sandbox);
+  modCalls.midi.length = 0; modCalls.cc.length = 0;
+  vm.runInContext('onMidi({data:[0x91,0x40,0x5e]})', sandbox); // 報告ログの1行目相当
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0x90, 0x40, 0x5e]),
+    `ch2 NoteOnが正規化されない: ${JSON.stringify(lastMidi())}`);
+  assert(JSON.stringify(lastCc()) === JSON.stringify([2, 0x5e]),
+    `鍵盤系のベロシティ→ブレス救済が働かない: ${JSON.stringify(lastCc())}`);
+  assert(vm.runInContext('breath', sandbox) === 0x5e, 'breath表示が更新されない');
+  assert(vm.runInContext('curNote', sandbox) === 0x40, 'curNoteが更新されない');
+  vm.runInContext('onMidi({data:[0x81,0x40,0x00]})', sandbox);
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0x80, 0x40, 0x00]),
+    `ch2 NoteOffが正規化されない: ${JSON.stringify(lastMidi())}`);
+  assert(vm.runInContext('curNote', sandbox) === -1, 'NoteOffでcurNoteが戻らない');
+  // EWI式 (CC2先行) ではベロシティでブレスを上書きしない
+  const nCc = modCalls.cc.length;
+  vm.runInContext('onMidi({data:[0xB1,0x02,0x64]})', sandbox);
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0xB0, 0x02, 0x64]),
+    `ch2 CC2が正規化されない: ${JSON.stringify(lastMidi())}`);
+  vm.runInContext('onMidi({data:[0x91,0x3b,0x58]})', sandbox);
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0x90, 0x3b, 0x58]),
+    `EWI式NoteOnが正規化されない: ${JSON.stringify(lastMidi())}`);
+  assert(modCalls.cc.length === nCc, 'EWI吹奏中にブレスが上書きされた');
+  assert(vm.runInContext('breath', sandbox) === 0x64, 'EWI式でbreathが保持されない');
+  // チャンネルプレッシャー (データ1バイト) とプログラムチェンジ表示
+  vm.runInContext('onMidi({data:[0xD1,0x50]})', sandbox);
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0xD0, 0x50, 0]),
+    `pressureが正規化されない: ${JSON.stringify(lastMidi())}`);
+  assert(vm.runInContext('breath', sandbox) === 0x50, 'pressureがbreath表示に反映されない');
+  vm.runInContext('onMidi({data:[0xC1,0x02]})', sandbox);
+  assert(JSON.stringify(lastMidi()) === JSON.stringify([0xC0, 0x02, 0]),
+    `PCが正規化されない: ${JSON.stringify(lastMidi())}`);
+  assert(els['selPreset'].value === '2', `PC表示がNaN/不正: ${els['selPreset'].value}`);
   if (failures.length) { console.error('NG:\n - ' + failures.join('\n - ')); process.exit(1); }
   console.log(JSON.stringify({ render: modCalls.render, nextTime: +nextTime.toFixed(3) }));
   console.log('SMOKE-OK');

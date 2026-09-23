@@ -213,11 +213,24 @@ function onMidi(ev) {
   const line = `in ${[...ev.data].map((v) => v.toString(16).padStart(2, "0")).join(" ")}`;
   pre.textContent = line + "\n" + pre.textContent.slice(0, 2000);
   if (!Mod || !running) return;
-  Mod._ewi_midi(st, d1, d2 ?? 0);
-  if (type === 0x90) { curNote = d2 === 0 ? -1 : d1; if (d2 === 0 && curNote < 0) curNote = -1; }
-  else if (type === 0x80) curNote = -1;
-  else if (type === 0xb0 && (d1 === 2 || d1 === 102)) { breath = d2; $("rngBreath").value = d2; $("valBreath").textContent = d2; }
-  else if (type === 0xc0) { $("selPreset").value = String(d2 % 4); }
+  // コア(Ewi_Midi)はch1固定のため、全chをch1に正規化して渡す(omni受信)。ログは生表示のまま。
+  // (例: 91 40 5e -> 90 40 5e。従来はch2がそのまま捨てられ無音だった)
+  const md1 = d1, md2 = d2 ?? 0;
+  const mst = (type >= 0x80 && type <= 0xef) ? type : st;
+  Mod._ewi_midi(mst, md1, md2);
+  if (type === 0x90) {
+    if (md2 === 0) { if (curNote === md1) curNote = -1; }
+    else {
+      curNote = md1;
+      // 鍵盤系(ブレスCCなし)救済: ブレスがほぼ0ならベロシティをブレス化。
+      // EWI実吹き中はCC2が先行してbreath>=10のため上書きしない。内蔵鍵盤noteOn()と同方針。
+      if (breath < 10) setBreath(md2);
+    }
+  }
+  else if (type === 0x80) { if (curNote === md1) curNote = -1; }
+  else if (type === 0xb0 && (md1 === 2 || md1 === 102)) { breath = md2; $("rngBreath").value = md2; $("valBreath").textContent = md2; }
+  else if (type === 0xd0) { breath = md1; $("rngBreath").value = md1; $("valBreath").textContent = md1; } // チャンネルプレッシャー(データ1バイト)
+  else if (type === 0xc0) { $("selPreset").value = String(md1 % 4); }
 }
 
 // --- 配線 ---
