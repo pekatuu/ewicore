@@ -48,6 +48,7 @@ tresult PLUGIN_API EwiVst::EwiVstController::initialize (FUnknown* context)
   parameters.addParameter (mk (STR16 ("ReverbMix"), kRevMix, nullptr, 0., 0.6, 0.16));
   parameters.addParameter (mk (STR16 ("ReverbSize"), kRevSize, nullptr, 0., 1., 0.55));
   parameters.addParameter (mk (STR16 ("Bend"), kBend, STR16 ("PB"), 0., 1., 0.5));
+  parameters.addParameter (mk (STR16 ("FilterGamma"), kFilterGamma, nullptr, 0.3, 3.0, 1.5));
   return kResultOk;
 }
 
@@ -56,16 +57,15 @@ tresult PLUGIN_API EwiVst::EwiVstController::setComponentState (IBStream* state)
 {
   if (!state)
     return kResultFalse;
-  // processor state: version + preset + kStateCount doubles (see processor getState)
+  // processor state: version + preset + N doubles (v1=16, v2=17, v3=18)
   IBStreamer s (state, kLittleEndian);
   int32 version = 0;
-  if (!s.readInt32 (version) || (version != 1 && version != 2))
+  if (!s.readInt32 (version) || (version < 1 || version > 3))
     return kResultFalse;
   int32 preset = 0;
   if (!s.readInt32 (preset))
     return kResultFalse;
-  // v1 state has 16 entries (no kBend at end); v2 has kStateCount entries.
-  const int n = (version == 1) ? EwiVst::kStateCount - 1 : EwiVst::kStateCount;
+  const int n = (version == 1) ? 16 : (version == 2) ? 17 : EwiVst::kStateCount;
   for (int i = 0; i < n; i++)
   {
     double v = 0.0;
@@ -73,8 +73,10 @@ tresult PLUGIN_API EwiVst::EwiVstController::setComponentState (IBStream* state)
       return kResultFalse;
     setParamNormalized (EwiVst::kStateOrder[i], v);
   }
-  if (version == 1)
+  if (version < 2)
     setParamNormalized (EwiVst::kBend, 0.5);
+  if (version < 3)
+    setParamNormalized (EwiVst::kFilterGamma, EwiVst::filterGammaToNorm (1.5));
   return kResultOk;
 }
 

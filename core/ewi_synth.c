@@ -10,23 +10,23 @@ static const EwiPreset kPresets[EWI_NUM_PRESETS] = {
   // 0: Axis系リード (2Saw detune + 噛みつくLPF)
   {"Axis", EWI_WAVE_SAW, EWI_WAVE_SAW, 7.f, 0.5f, 0.5f,
    750.f, 6200.f, 0.38f, 2.0f, 0.35f, 1.6f, 0.06f, 0.95f,
-   0.9f, 0.012f, 5.6f, 0.35f, 0.004f, 0.09f, 2.f,
-   0.12f, 0.27f, 0.32f, 0.16f, 0.55f},
+   0.9f, 0.012f, 5.6f, 0.35f, 0.004f, 0.06f, 2.f,
+   0.12f, 0.27f, 0.32f, 0.16f, 0.55f, 1.5f},
   // 1: Flute (sine寄り・フォルマント薄め)
   {"Flute", EWI_WAVE_SINE, EWI_WAVE_TRI, 4.f, 0.7f, 0.5f,
    900.f, 2800.f, 0.12f, 1.2f, 0.15f, 1.3f, 0.05f, 0.95f,
    0.8f, 0.008f, 5.0f, 0.25f, 0.006f, 0.12f, 2.f,
-   0.10f, 0.30f, 0.30f, 0.20f, 0.50f},
+   0.10f, 0.30f, 0.30f, 0.20f, 0.50f, 1.5f},
   // 2: Brass (pulse混じり・レゾ高め)
   {"Brass", EWI_WAVE_SAW, EWI_WAVE_PULSE, -6.f, 0.45f, 0.35f,
    500.f, 5200.f, 0.30f, 2.4f, 0.45f, 1.8f, 0.08f, 0.95f,
    0.9f, 0.015f, 5.2f, 0.20f, 0.008f, 0.10f, 2.f,
-   0.10f, 0.24f, 0.30f, 0.14f, 0.50f},
+   0.10f, 0.24f, 0.30f, 0.14f, 0.50f, 1.5f},
   // 3: SyncLead (BをSync風に明るく: 実装は激しいデチューンで近似)
   {"SyncLd", EWI_WAVE_SAW, EWI_WAVE_PULSE, 14.f, 0.5f, 0.22f,
    900.f, 7000.f, 0.45f, 2.8f, 0.25f, 1.5f, 0.05f, 0.95f,
    0.85f, 0.010f, 6.0f, 0.40f, 0.003f, 0.08f, 2.f,
-   0.14f, 0.29f, 0.38f, 0.18f, 0.60f},
+   0.14f, 0.29f, 0.38f, 0.18f, 0.60f, 1.5f},
 };
 
 const EwiPreset* Ewi_GetPresetList(void) { return kPresets; }
@@ -211,6 +211,7 @@ void Ewi_Midi(EwiSynth* s, uint8_t status, uint8_t d1, uint8_t d2) {
 void Ewi_SetCutoffBase(EwiSynth* s, float hz) { s->pr.cutoff_base = clampf(hz, 80.f, 12000.f); }
 void Ewi_SetResonance(EwiSynth* s, float r)   { s->pr.resonance = clampf(r, 0.f, 0.95f); }
 void Ewi_SetBreathDepth(EwiSynth* s, float hz){ s->pr.cutoff_breath = clampf(hz, 0.f, 12000.f); }
+void Ewi_SetFilterGamma(EwiSynth* s, float g) { s->pr.filter_gamma = clampf(g, 0.3f, 3.0f); }
 void Ewi_SetGlide(EwiSynth* s, float sec)     { s->pr.glide_s = clampf(sec, 0.f, 0.5f); }
 void Ewi_SetFormantMix(EwiSynth* s, float m)  { s->pr.formant_mix = clampf(m, 0.f, 1.f); }
 void Ewi_SetDelayMix(EwiSynth* s, float m)   { s->pr.dly_mix = clampf(m, 0.f, 0.6f); }
@@ -330,8 +331,10 @@ void Ewi_Render(EwiSynth* s, float* outL, float* outR, int frames) {  const floa
     osc *= 0.5f; // ヘッドルーム
 
     // --- カットオフ (ブレス連動・オーディオレート平滑) ---
+    // 3020m系はブレスCV→VCFが指数的(V/oct)のため冪(ガンマ)で近似。
+    // gamma=1.0で従来の線形、既定1.5はV/octの中点近似。
     float env = s->breath_env;
-    float fc_t = s->pr.cutoff_base + s->pr.cutoff_breath * env;
+    float fc_t = s->pr.cutoff_base + s->pr.cutoff_breath * powf(env, s->pr.filter_gamma);
     fc_t = clampf(fc_t, 60.f, 16000.f);
     s->cutoff_sm += (fc_t - s->cutoff_sm) * gcut;
     float fc = s->cutoff_sm;
@@ -377,6 +380,9 @@ void Ewi_Render(EwiSynth* s, float* outL, float* outR, int frames) {  const floa
 
     // --- VCA (ブレス包絡) ---
     float gain = env * env; // 立ち上がりを管楽器的に
+    // 3020m式のVCAゲート: 微小ブレスの裾(フィルタbase域の低音残り)を
+    // ディレイ/リバーブに回す前に落とす。env 0.035以上は素通し。
+    gain *= clampf((env - 0.02f) / 0.015f, 0.f, 1.f);
     gain *= s->pr.vca_gain * s->volume * (0.3f + 0.7f * s->expression);
     float mono = y * gain;
     mono = SAT(mono * 1.2f) * 0.8f;

@@ -21,6 +21,7 @@ EMSCRIPTEN_KEEPALIVE void ewi_setBreath(float v) { Ewi_SetBreath01(&g_synth, v);
 EMSCRIPTEN_KEEPALIVE void ewi_setCutoff(float hz) { Ewi_SetCutoffBase(&g_synth, hz); }
 EMSCRIPTEN_KEEPALIVE void ewi_setReso(float r) { Ewi_SetResonance(&g_synth, r); }
 EMSCRIPTEN_KEEPALIVE void ewi_setBreathDepth(float hz) { Ewi_SetBreathDepth(&g_synth, hz); }
+EMSCRIPTEN_KEEPALIVE void ewi_setFilterGamma(float g) { Ewi_SetFilterGamma(&g_synth, g); }
 EMSCRIPTEN_KEEPALIVE void ewi_setGlide(float s) { Ewi_SetGlide(&g_synth, s); }
 EMSCRIPTEN_KEEPALIVE void ewi_setFormant(float m) { Ewi_SetFormantMix(&g_synth, m); }
 EMSCRIPTEN_KEEPALIVE void ewi_setDlyMix(float v) { Ewi_SetDelayMix(&g_synth, v); }

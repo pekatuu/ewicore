@@ -61,6 +61,7 @@ typedef struct {
   float dly_fb;         // 0..0.7 ディレイフィードバック
   float rev_mix;        // 0..0.6 リバーブ混合
   float rev_size;       // 0..1 リバーブ部屋サイズ
+  float filter_gamma;   // 0.3..3.0 ブレス→カットオフの冪 (1.0=従来の線形)
 } EwiPreset;
 
 typedef struct {
@@ -136,6 +137,7 @@ void Ewi_SetBreath01(EwiSynth* s, float v); // 自作ブレスセンサ用ADC直
 void Ewi_SetCutoffBase(EwiSynth* s, float hz);
 void Ewi_SetResonance(EwiSynth* s, float r);
 void Ewi_SetBreathDepth(EwiSynth* s, float hz);
+void Ewi_SetFilterGamma(EwiSynth* s, float g); // 0.3..3.0
 void Ewi_SetGlide(EwiSynth* s, float sec);
 void Ewi_SetFormantMix(EwiSynth* s, float m);
 // 空間系

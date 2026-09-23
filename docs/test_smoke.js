@@ -31,6 +31,7 @@ class FakeAC {
 const modCalls = { render: 0, noteOn: [] };
 const modStub = {
   _ewi_init() {}, _ewi_program() {}, _ewi_setCutoff() {}, _ewi_setBreathDepth() {},
+  _ewi_setFilterGamma() {},
   _ewi_setReso() {}, _ewi_setFormant() {}, _ewi_setGlide() {},
   _ewi_cc() {}, _ewi_noteOff() {},
   _ewi_noteOn: (n) => modCalls.noteOn.push(n),
@@ -76,7 +77,7 @@ vm.createContext(sandbox);
   await els['btnSelf'].onclick();
   assert(modCalls.noteOn.includes(69), 'selftestのnoteOn(69)が呼ばれない');
   // 空間系スライダ配線 (例外なく通ること)
-  for (const id of ['pDlyMix', 'pDlyTime', 'pDlyFb', 'pRevMix', 'pRevSize']) {
+  for (const id of ['pDlyMix', 'pDlyTime', 'pDlyFb', 'pRevMix', 'pRevSize', 'pFGamma']) {
     els[id].value = '20';
     els[id].oninput({ target: els[id] });
   }

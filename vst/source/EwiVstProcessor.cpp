@@ -107,6 +107,9 @@ void EwiVst::EwiVstProcessor::applyParam (ParamID id, ParamValue norm)
     case kBend:
       Ewi_PitchBend (&synth, (int)(norm * 16383.0 + 0.5));
       break;
+    case kFilterGamma:
+      Ewi_SetFilterGamma (&synth, (float)normToFilterGamma (norm));
+      break;
     case kBypass: bypass = (norm > 0.5); break;
     default: break;
   }
@@ -295,13 +298,13 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::setState (IBStream* state)
     return kResultFalse;
   IBStreamer s (state, kLittleEndian);
   int32 version = 0;
-  if (!s.readInt32 (version) || (version != 1 && version != 2))
+  if (!s.readInt32 (version) || (version < 1 || version > 3))
     return kResultFalse;
   int32 preset = 0;
   if (!s.readInt32 (preset))
     return kResultFalse;
   Ewi_SetPreset (&synth, (uint8_t)preset);
-  const int n = (version == 1) ? EwiVst::kStateCount - 1 : EwiVst::kStateCount;
+  const int n = (version == 1) ? 16 : (version == 2) ? 17 : EwiVst::kStateCount;
   for (int i = 0; i < n; i++)
   {
     double v = 0.0;
@@ -309,8 +312,10 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::setState (IBStream* state)
       return kResultFalse;
     applyParam (EwiVst::kStateOrder[i], v);
   }
-  if (version == 1)
+  if (version < 2)
     applyParam (EwiVst::kBend, 0.5);
+  if (version < 3)
+    applyParam (EwiVst::kFilterGamma, EwiVst::filterGammaToNorm (1.5));
   return kResultOk;
 }
 
@@ -320,7 +325,7 @@ tresult PLUGIN_API EwiVst::EwiVstProcessor::getState (IBStream* state)
   if (!state)
     return kResultFalse;
   IBStreamer s (state, kLittleEndian);
-  s.writeInt32 (2);
+  s.writeInt32 (3);
   s.writeInt32 ((int32)synth.preset_no);
   for (int i = 0; i < EwiVst::kStateCount; i++)
   {

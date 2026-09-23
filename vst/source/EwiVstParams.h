@@ -26,16 +26,17 @@ enum : ParamID {
   kRevMix,      // 0..0.6
   kRevSize,     // 0..1
   kBend,        // 0..1 (PitchBend, center 0.5)
+  kFilterGamma, // 0.3..3.0 (breath->cutoff power)
   kNumParamsSentinel
 };
-constexpr int kNumParams = 17;
+constexpr int kNumParams = 18;
 
 // State stream order (processor <-> controller must match)
-// NOTE: kBend appended last so v1 states (16 entries) stay prefix-compatible.
+// NOTE: appended last so v1 (16) / v2 (17) states stay prefix-compatible.
 static const ParamID kStateOrder[] = {
   kBypass, kPreset, kBreath, kVibrato, kVolume, kExpression, kCutoff,
   kBreathDepth, kResonance, kGlide, kFormant, kDlyMix, kDlyTime, kDlyFb,
-  kRevMix, kRevSize, kBend,
+  kRevMix, kRevSize, kBend, kFilterGamma,
 };
 constexpr int kStateCount = sizeof (kStateOrder) / sizeof (kStateOrder[0]);
 
@@ -54,6 +55,15 @@ inline int normToPreset (double n)
 {
   int p = (int)(n * 3.0 + 0.5);
   return p < 0 ? 0 : (p > 3 ? 3 : p);
+}
+inline double normToFilterGamma (double n) { return 0.3 + n * 2.7; }
+inline double filterGammaToNorm (double g)
+{
+  if (g < 0.3)
+    g = 0.3;
+  if (g > 3.0)
+    g = 3.0;
+  return (g - 0.3) / 2.7;
 }
 
 inline double defaultNorm (ParamID id)
@@ -77,6 +87,7 @@ inline double defaultNorm (ParamID id)
     case kRevMix: return 0.16 / 0.6;
     case kRevSize: return 0.55;
     case kBend: return 0.5;
+    case kFilterGamma: return filterGammaToNorm (1.5);
     default: return 0.0;
   }
 }

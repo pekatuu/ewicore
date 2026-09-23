@@ -28,7 +28,7 @@ Webアプリのヘッダ「音質」セレクトで Pico2/PC-HQ を切替可能 
 ## 音作り (Axis基準)
 
 * OSC: 2x PolyBLEP Saw/Pulse/Tri/Sine、デチューン、Pulse幅可変
-* FILTER: 4段ラダー近似 + tanh飽和 + レゾナンス(0..0.95)、カットオフはオーディオレート平滑
+* FILTER: 4段ラダー近似 + tanh飽和 + レゾナンス(0..0.95)、カットオフはオーディオレート平滑+ブレス冪(gamma既定1.5)
 * FORMANT: ラダー段差分の軽量フォルマントブレンド (管の鼻抜け用)
 * VCA: ブレス包絡の二乗カーブ (`env^2`)、タンギングのキレ用アタック 4ms / リリース 90ms
 * PITCH: レガート優先モノ、グライド、PitchBend、CC1ビブラート(LFO→ピッチ)
@@ -152,9 +152,9 @@ powershell -ExecutionPolicy Bypass -File vst/build_vst.ps1
 # ewi-axis-va.vst3フォルダごと Common\VST3 (例: %LOCALAPPDATA%\Programs\Common\VST3\) にコピー
 ```
 
-仕様: モノフォニック・ステレオアウト、16パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/CC102/PitchBend/ProgramChange)+NoteExpressionチューニング対応、IMidiMapping対応 (CC1/2/5/7/11/102)、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
+仕様: モノフォニック・ステレオアウト、18パラメータ (Preset/Breath=CC2/Vibrato=CC1/Volume/Expression/Cutoff/…/Delay/Reverb/Bend/FilterGamma/Bypass)、MIDI CC受信 (Note/CC1/CC2/CC5/CC7/CC11/CC65/CC102/PitchBend/ProgramChange)+NoteExpressionチューニング対応、IMidiMapping対応 (CC1/2/5/7/11/102/AfterTouch128→Breath/PitchBend129→Bend/ProgramChange130→Preset、全16ch)、64bit処理対応、テール1s。GUIはDAW汎用エディタ。
 
-検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。`vst/test/bend_test.cpp` (要ビルド) でBEND繰り返し追従をプロセッサ層で検証 (legacy CC129・note-expression両経路)。
+検証: Steinberg validator **47/47通過** (32bit+64bit、複数サンプルレート、可変ブロック、バイパス永続化含む)。`vst/test/bend_test.cpp` (要ビルド) でBEND繰り返し追従をプロセッサ層で検証 (legacy CC129・note-expression両経路)。`vst/test/strict_test.cpp` で厳密ホスト模擬 (パラメータ経路のみ: Breath/Bend/AT/PCマッピング) を検証。
 
 ## API (抜粋)
 
@@ -168,8 +168,11 @@ void Ewi_Render(&s, outL, outR, n);    // float stereo
 void Ewi_RenderS16Mono(&s, out, n);    // Pico I2S用
 ```
 
-パラメータ微調整: `Ewi_SetCutoffBase / SetResonance / SetBreathDepth / SetGlide / SetFormantMix`
+パラメータ微調整: `Ewi_SetCutoffBase / SetResonance / SetBreathDepth / SetFilterGamma(0.3..3.0) / SetGlide / SetFormantMix`
 空間系: `Ewi_SetDelayMix / SetDelayTime / SetDelayFb / SetRevMix / SetRevSize` (MIDI CC割当はなし、UI/プリセットのみ)
+
+ブレス→フィルタは `fc = base + depth * env^gamma` (既定gamma=1.5: 3020m系VCFの指数応答に近似。1.0で従来の線形)。
+VCAは `env^2` に微小ブレスゲート (env 0.035以上素通し・0.02以下で無音) を併用し、フィルタbase域の低音残りをディレイ/リバーブに回す前に落とす。
 
 ## 既知の制限
 

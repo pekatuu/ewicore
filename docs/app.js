@@ -45,6 +45,7 @@ function setQuality(q) {
     Mod._ewi_program(+$("selPreset").value);
     Mod._ewi_setCutoff(+$("pCut").value);
     Mod._ewi_setBreathDepth(+$("pBCut").value);
+    Mod._ewi_setFilterGamma(+$("pFGamma").value / 100);
     Mod._ewi_setReso(+$("pRes").value / 100);
     Mod._ewi_setFormant(+$("pForm").value / 100);
     Mod._ewi_setGlide(+$("pGlide").value / 1000);
@@ -241,6 +242,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("selPreset").onchange = (e) => { if (Mod) Mod._ewi_program(+e.target.value); syncParams(+e.target.value); };
   $("pCut").oninput = (e) => { $("vCut").textContent = e.target.value; Mod && Mod._ewi_setCutoff(+e.target.value); };
   $("pBCut").oninput = (e) => { $("vBCut").textContent = e.target.value; Mod && Mod._ewi_setBreathDepth(+e.target.value); };
+  $("pFGamma").oninput = (e) => { $("vFGamma").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setFilterGamma(+e.target.value / 100); };
   $("pRes").oninput = (e) => { $("vRes").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setReso(+e.target.value / 100); };
   $("pForm").oninput = (e) => { $("vForm").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setFormant(+e.target.value / 100); };
   $("pGlide").oninput = (e) => { $("vGlide").textContent = (+e.target.value / 1000).toFixed(3); Mod && Mod._ewi_setGlide(+e.target.value / 1000); };
@@ -271,8 +273,8 @@ window.addEventListener("DOMContentLoaded", () => {
 function syncParams(p) {
   // 参考初期値表示の同期(厳密な双方向ではない)
   const table = [
-    [750, 6200, 38, 35, 12], [900, 2800, 12, 15, 8], [500, 5200, 30, 45, 15], [900, 7000, 45, 25, 10],
-  ][p] || [750, 6200, 38, 35, 12];
+    [750, 6200, 38, 35, 12, 150], [900, 2800, 12, 15, 8, 150], [500, 5200, 30, 45, 15, 150], [900, 7000, 45, 25, 10, 150],
+  ][p] || [750, 6200, 38, 35, 12, 150];
   const fx = [
     [12, 270, 32, 16, 55], [10, 300, 30, 20, 50], [10, 240, 30, 14, 50], [14, 290, 38, 18, 60],
   ][p] || [12, 270, 32, 16, 55];
@@ -281,6 +283,7 @@ function syncParams(p) {
   $("pRes").value = table[2]; $("vRes").textContent = (table[2] / 100).toFixed(2);
   $("pForm").value = table[3]; $("vForm").textContent = (table[3] / 100).toFixed(2);
   $("pGlide").value = table[4]; $("vGlide").textContent = (table[4] / 1000).toFixed(3);
+  $("pFGamma").value = table[5]; $("vFGamma").textContent = (table[5] / 100).toFixed(2);
   $("pDlyMix").value = fx[0]; $("vDlyMix").textContent = (fx[0] / 100).toFixed(2);
   $("pDlyTime").value = fx[1]; $("vDlyTime").textContent = fx[1];
   $("pDlyFb").value = fx[2]; $("vDlyFb").textContent = (fx[2] / 100).toFixed(2);
