@@ -45,7 +45,8 @@ function setQuality(q) {
     Mod._ewi_program(+$("selPreset").value);
     Mod._ewi_setCutoff(+$("pCut").value);
     Mod._ewi_setBreathDepth(+$("pBCut").value);
-    Mod._ewi_setFilterGamma(+$("pFGamma").value / 100);
+    // pFGamma/wasm双方が新版のときのみ (旧HTML・旧wasm混在でも落とさない)
+    { const fg = $("pFGamma"); if (fg && Mod._ewi_setFilterGamma) Mod._ewi_setFilterGamma(+fg.value / 100); }
     Mod._ewi_setReso(+$("pRes").value / 100);
     Mod._ewi_setFormant(+$("pForm").value / 100);
     Mod._ewi_setGlide(+$("pGlide").value / 1000);
@@ -64,8 +65,18 @@ function setQuality(q) {
 async function startAudio() {
   try {
     await bootWasm();
-    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+    if (!AC) {
+      try {
+        AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+      } catch (e) {
+        log("AudioContext作成失敗: " + (e && e.message) + " / 出力デバイスの有無・有効化を確認してください");
+        AC = null;
+        return;
+      }
+    }
     await AC.resume();
+    log("AudioContext state=" + AC.state + " sr=" + AC.sampleRate
+      + (AC.state !== "running" ? " (suspendedのままなら自動再生ブロック/デバイス異常。ボタンをもう一度押すか出力先を確認)" : ""));
     if (!Mod) throw new Error("WASMモジュールが読み込めませんでした");
     Mod._ewi_init(AC.sampleRate);
     log("WASM init sr=" + AC.sampleRate);
@@ -167,7 +178,7 @@ function draw() {
   ctx.fillStyle = lv > 0.45 ? "#e5484d" : "#46a758";
   ctx.fillRect(0, 10, w, 26);
   ctx.fillStyle = "#eee"; ctx.font = "13px sans-serif";
-  ctx.fillText("level " + lv.toFixed(3) + "  cutoff " + Math.round(fc) + "Hz  note " + curNote, 8, 60);
+  ctx.fillText("level " + lv.toFixed(3) + "  cutoff " + Math.round(fc) + "Hz  note " + curNote + "  AC:" + (AC ? AC.state : "-"), 8, 60);
   // ブレスバー
   ctx.fillStyle = "#3e63dd";
   ctx.fillRect(0, 68, (breath / 127) * cv.width, 12);
@@ -255,7 +266,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("selPreset").onchange = (e) => { if (Mod) Mod._ewi_program(+e.target.value); syncParams(+e.target.value); };
   $("pCut").oninput = (e) => { $("vCut").textContent = e.target.value; Mod && Mod._ewi_setCutoff(+e.target.value); };
   $("pBCut").oninput = (e) => { $("vBCut").textContent = e.target.value; Mod && Mod._ewi_setBreathDepth(+e.target.value); };
-  $("pFGamma").oninput = (e) => { $("vFGamma").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setFilterGamma(+e.target.value / 100); };
+  { const g = $("pFGamma"); if (g) g.oninput = (e) => { const gv = $("vFGamma"); if (gv) gv.textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setFilterGamma && Mod._ewi_setFilterGamma(+e.target.value / 100); }; }
   $("pRes").oninput = (e) => { $("vRes").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setReso(+e.target.value / 100); };
   $("pForm").oninput = (e) => { $("vForm").textContent = (+e.target.value / 100).toFixed(2); Mod && Mod._ewi_setFormant(+e.target.value / 100); };
   $("pGlide").oninput = (e) => { $("vGlide").textContent = (+e.target.value / 1000).toFixed(3); Mod && Mod._ewi_setGlide(+e.target.value / 1000); };
@@ -296,7 +307,7 @@ function syncParams(p) {
   $("pRes").value = table[2]; $("vRes").textContent = (table[2] / 100).toFixed(2);
   $("pForm").value = table[3]; $("vForm").textContent = (table[3] / 100).toFixed(2);
   $("pGlide").value = table[4]; $("vGlide").textContent = (table[4] / 1000).toFixed(3);
-  $("pFGamma").value = table[5]; $("vFGamma").textContent = (table[5] / 100).toFixed(2);
+  { const g = $("pFGamma"), gv = $("vFGamma"); if (g && gv) { g.value = table[5]; gv.textContent = (table[5] / 100).toFixed(2); } }
   $("pDlyMix").value = fx[0]; $("vDlyMix").textContent = (fx[0] / 100).toFixed(2);
   $("pDlyTime").value = fx[1]; $("vDlyTime").textContent = fx[1];
   $("pDlyFb").value = fx[2]; $("vDlyFb").textContent = (fx[2] / 100).toFixed(2);

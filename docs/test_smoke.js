@@ -128,6 +128,33 @@ vm.createContext(sandbox);
   assert(JSON.stringify(lastMidi()) === JSON.stringify([0xC0, 0x02, 0]),
     `PCが正規化されない: ${JSON.stringify(lastMidi())}`);
   assert(els['selPreset'].value === '2', `PC表示がNaN/不正: ${els['selPreset'].value}`);
+  // 新旧skew耐性: 旧wasm(exportなし)でgammaスライダを触っても落ちない
+  delete modStub._ewi_setFilterGamma;
+  try {
+    els['pFGamma'].value = '200';
+    els['pFGamma'].oninput({ target: els['pFGamma'] });
+  } catch (e) {
+    failures.push('旧wasmでpFGamma oninputがthrow: ' + (e && e.message));
+  }
+  modStub._ewi_setFilterGamma = () => {};
+  // 新旧skew耐性: 旧HTML(pFGamma欠落)でDOMContentLoaded全体が死なない
+  delete els['pFGamma']; delete els['vFGamma'];
+  const origGet = sandbox.document.getElementById;
+  sandbox.document.getElementById = (id) => (id === 'pFGamma' || id === 'vFGamma') ? null : origGet(id);
+  try {
+    listeners['DOMContentLoaded']();
+    vm.runInContext('syncParams(0)', sandbox);
+  } catch (e) {
+    failures.push('旧HTMLで配線/syncParamsがthrow: ' + (e && e.message));
+  }
+  assert(typeof listeners['keydown'] === 'function', '旧HTMLでkeydown配線が消えた');
+  const nOn = modCalls.noteOn.length;
+  try {
+    listeners['keydown']({ repeat: false, code: 'KeyA', key: 'a', preventDefault() {} });
+  } catch (e) {
+    failures.push('旧HTMLでkeydownがthrow: ' + (e && e.message));
+  }
+  assert(modCalls.noteOn.length === nOn + 1, '旧HTMLでキー発音しない');
   if (failures.length) { console.error('NG:\n - ' + failures.join('\n - ')); process.exit(1); }
   console.log(JSON.stringify({ render: modCalls.render, nextTime: +nextTime.toFixed(3) }));
   console.log('SMOKE-OK');
